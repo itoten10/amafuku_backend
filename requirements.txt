@@ -8,4 +8,4 @@ pandas==2.1.4
 numpy==1.26.2
 python-dateutil==2.8.2
 pymysql==1.1.0
-mysqlclient==2.2.1
+# mysqlclient==2.2.1 pymysqlがあれば十分で、mysqlclientは不要。Azure環境ではmysqlclientのビルドが困難らしい。
