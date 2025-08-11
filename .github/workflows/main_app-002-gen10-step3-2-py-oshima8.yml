@@ -23,11 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Create and start virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
       
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -58,4 +53,5 @@ jobs:
         with:
           app-name: 'app-002-gen10-step3-2-py-oshima8'
           slot-name: 'Production'
+
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A0424BCDDFEA4094B26EC23E8E8C19F0 }}
