@@ -51,8 +51,22 @@ jobs:
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
+        continue-on-error: true
         with:
           app-name: 'app-002-gen10-step3-2-py-oshima8'
           slot-name: 'Production'
-
+          package: .
+          clean: true
+          restart: true
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A0424BCDDFEA4094B26EC23E8E8C19F0 }}
+      
+      - name: 'Retry Deploy on Failure'
+        if: steps.deploy-to-webapp.outcome == 'failure'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'app-002-gen10-step3-2-py-oshima8'
+          slot-name: 'Production'
+          package: .
+          clean: true
+          restart: true
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A0424BCDDFEA4094B26EC23E8E8C19F0 }}
