@@ -41,7 +41,7 @@ OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
 # OpenAIクライアント初期化（エラーハンドリング付き）
 openai_client = None
 try:
-    if OPENAI_API_KEY and OPENAI_API_KEY.startswith('sk-'):
+    if OPENAI_API_KEY and (OPENAI_API_KEY.startswith('sk-') or OPENAI_API_KEY.startswith('sk-proj-')):
         openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
         logger.info("OpenAI client initialized successfully")
     else:
@@ -84,7 +84,9 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "openai_available": bool(openai_client)
+        "openai_available": bool(openai_client),
+        "api_key_present": bool(OPENAI_API_KEY),
+        "api_key_prefix": OPENAI_API_KEY[:10] if OPENAI_API_KEY else None
     }
 
 # AIクイズ生成エンドポイント
