@@ -55,8 +55,8 @@ try:
         
         # HTTPXクライアントを明示的に作成（プロキシ無効化）
         http_client = httpx.AsyncClient(
-            timeout=30.0,
-            proxies={}  # 空のプロキシ設定で無効化
+            timeout=30.0
+            # プロキシ設定を完全に除外
         )
         
         openai_client = AsyncOpenAI(
