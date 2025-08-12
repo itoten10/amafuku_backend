@@ -38,8 +38,17 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 OPENAI_MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "300"))
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
 
-# OpenAIクライアント初期化
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+# OpenAIクライアント初期化（エラーハンドリング付き）
+openai_client = None
+try:
+    if OPENAI_API_KEY and OPENAI_API_KEY.startswith('sk-'):
+        openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        logger.info("OpenAI client initialized successfully")
+    else:
+        logger.warning("OpenAI API key not provided or invalid format")
+except Exception as e:
+    logger.error(f"Failed to initialize OpenAI client: {e}")
+    openai_client = None
 
 # リクエスト/レスポンスモデル
 class QuizRequest(BaseModel):
@@ -55,11 +64,20 @@ class QuizResponse(BaseModel):
 # ルートエンドポイント
 @app.get("/")
 async def root():
-    return {
-        "message": "Famoly Drive API is running",
-        "openai_configured": bool(OPENAI_API_KEY),
-        "version": "2.0.0"
-    }
+    try:
+        return {
+            "message": "Famoly Drive API is running",
+            "openai_configured": bool(openai_client),
+            "version": "2.0.0",
+            "status": "healthy"
+        }
+    except Exception as e:
+        logger.error(f"Root endpoint error: {e}")
+        return {
+            "message": "Famoly Drive API",
+            "status": "error",
+            "error": str(e)
+        }
 
 # ヘルスチェック
 @app.get("/health")
