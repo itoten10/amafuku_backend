@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 try:
     from openai import AsyncOpenAI
+    import httpx
     openai_import_success = True
 except ImportError as e:
     openai_import_success = False
@@ -44,18 +45,25 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 OPENAI_MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "300"))
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
 
-# OpenAIクライアント初期化（エラーハンドリング付き）
+# OpenAIクライアント初期化（プロキシ問題対応）
 openai_client = None
 init_error = None
 try:
     if OPENAI_API_KEY and (OPENAI_API_KEY.startswith('sk-') or OPENAI_API_KEY.startswith('sk-proj-')):
         # Clean API key (remove any whitespace)
         clean_api_key = OPENAI_API_KEY.strip()
+        
+        # HTTPXクライアントを明示的に作成（プロキシ無効化）
+        http_client = httpx.AsyncClient(
+            timeout=30.0,
+            proxies={}  # 空のプロキシ設定で無効化
+        )
+        
         openai_client = AsyncOpenAI(
             api_key=clean_api_key,
-            timeout=30.0
+            http_client=http_client
         )
-        logger.info("OpenAI client initialized successfully")
+        logger.info("OpenAI client initialized successfully with custom HTTP client")
     else:
         init_error = f"Invalid API key format. Key starts with: {OPENAI_API_KEY[:10] if OPENAI_API_KEY else 'None'}"
         logger.warning(init_error)
@@ -164,22 +172,26 @@ async def _generate_quiz_with_openai(spot_name: str, spot_description: str, diff
 解説: [簡潔な解説文]
 """.strip()
     
-    # OpenAI API呼び出し
-    response = await openai_client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=OPENAI_MAX_TOKENS,
-        temperature=OPENAI_TEMPERATURE
-    )
-    
-    # レスポンス解析
-    quiz_text = response.choices[0].message.content
-    parsed_quiz = _parse_quiz_response(quiz_text, points)
-    
-    # 使用トークン数をログ
-    logger.info(f"Quiz generated for {spot_name} - Tokens: {response.usage.total_tokens}")
-    
-    return parsed_quiz
+    try:
+        # OpenAI API呼び出し
+        response = await openai_client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=OPENAI_MAX_TOKENS,
+            temperature=OPENAI_TEMPERATURE
+        )
+        
+        # レスポンス解析
+        quiz_text = response.choices[0].message.content
+        parsed_quiz = _parse_quiz_response(quiz_text, points)
+        
+        # 使用トークン数をログ
+        logger.info(f"Quiz generated for {spot_name} - Tokens: {response.usage.total_tokens}")
+        
+        return parsed_quiz
+    except Exception as e:
+        logger.error(f"OpenAI API error: {e}")
+        return _get_fallback_quiz(spot_name, difficulty)
 
 def _parse_quiz_response(response: str, points: int) -> Dict:
     """OpenAI回答を構造化データに変換"""
