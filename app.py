@@ -49,7 +49,12 @@ openai_client = None
 init_error = None
 try:
     if OPENAI_API_KEY and (OPENAI_API_KEY.startswith('sk-') or OPENAI_API_KEY.startswith('sk-proj-')):
-        openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        # Clean API key (remove any whitespace)
+        clean_api_key = OPENAI_API_KEY.strip()
+        openai_client = AsyncOpenAI(
+            api_key=clean_api_key,
+            timeout=30.0
+        )
         logger.info("OpenAI client initialized successfully")
     else:
         init_error = f"Invalid API key format. Key starts with: {OPENAI_API_KEY[:10] if OPENAI_API_KEY else 'None'}"
