@@ -9,7 +9,13 @@ from typing import Dict, List, Optional
 import logging
 import os
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
+try:
+    from openai import AsyncOpenAI
+    openai_import_success = True
+except ImportError as e:
+    openai_import_success = False
+    openai_import_error = str(e)
+    AsyncOpenAI = None
 
 # 環境変数読み込み
 load_dotenv()
@@ -40,13 +46,16 @@ OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
 
 # OpenAIクライアント初期化（エラーハンドリング付き）
 openai_client = None
+init_error = None
 try:
     if OPENAI_API_KEY and (OPENAI_API_KEY.startswith('sk-') or OPENAI_API_KEY.startswith('sk-proj-')):
         openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
         logger.info("OpenAI client initialized successfully")
     else:
-        logger.warning("OpenAI API key not provided or invalid format")
+        init_error = f"Invalid API key format. Key starts with: {OPENAI_API_KEY[:10] if OPENAI_API_KEY else 'None'}"
+        logger.warning(init_error)
 except Exception as e:
+    init_error = str(e)
     logger.error(f"Failed to initialize OpenAI client: {e}")
     openai_client = None
 
@@ -86,7 +95,10 @@ async def health_check():
         "status": "healthy",
         "openai_available": bool(openai_client),
         "api_key_present": bool(OPENAI_API_KEY),
-        "api_key_prefix": OPENAI_API_KEY[:10] if OPENAI_API_KEY else None
+        "api_key_prefix": OPENAI_API_KEY[:10] if OPENAI_API_KEY else None,
+        "init_error": init_error,
+        "api_key_length": len(OPENAI_API_KEY) if OPENAI_API_KEY else 0,
+        "openai_imported": openai_import_success
     }
 
 # AIクイズ生成エンドポイント
